@@ -1,0 +1,80 @@
+{
+  "progress": {
+    "box_iou": "ok",
+    "nms": "ok",
+    "batched_nms": "ok",
+    "average_precision": "ok",
+    "mask_iou": "ok",
+    "polygon_to_mask": "ok",
+    "mask_to_yolo_seg": "ok",
+    "autolabel": "ok",
+    "oks": "ok",
+    "joint_angle": "ok",
+    "FLIP_IDX": "ok"
+  },
+  "latency": [
+    {
+      "Cấu hình": "one-to-many + NMS, conf 0.25",
+      "preprocess (ms)": 10.65,
+      "inference (ms)": 52.12,
+      "postprocess (ms)": 6.96,
+      "số box": 5
+    },
+    {
+      "Cấu hình": "one-to-many + NMS, conf 0.001",
+      "preprocess (ms)": 4.08,
+      "inference (ms)": 25.83,
+      "postprocess (ms)": 3.64,
+      "số box": 203
+    },
+    {
+      "Cấu hình": "one-to-one NMS-free, conf 0.25",
+      "preprocess (ms)": 4.15,
+      "inference (ms)": 26.01,
+      "postprocess (ms)": 1.18,
+      "số box": 5
+    },
+    {
+      "Cấu hình": "one-to-one NMS-free, conf 0.001",
+      "preprocess (ms)": 5.48,
+      "inference (ms)": 34.13,
+      "postprocess (ms)": 1.43,
+      "số box": 204
+    }
+  ],
+  "result_4b": {
+    "flip_idx": "giải phẫu",
+    "epochs": 40,
+    "imgsz": 640,
+    "Box mAP50-95": 0.9303488492063492,
+    "Pose mAP50": 0.995,
+    "Pose mAP50-95": 0.4573462529843696,
+    "train (phút)": 5.2
+  },
+  "result_4c": [
+    {
+      "Model": "flip_idx giải phẫu",
+      "Pose mAP50-95 — val gốc": 0.4573462529843696,
+      "Pose mAP50-95 — val lật gương": 0.43884777970456634
+    }
+  ],
+  "answers": {
+    "Q1": "(a) bus.jpg 640×480 sau letterbox (pad 80px mỗi bên): feature map 8×8×3 = 192 dự đoán thô\n\n(b) Nhãn gốc là xywh (góc trên-trái + kích thước), bị đọc như cxcywh (tâm + kích thước).",
+    "Q2": "Postprocess thay đổi nhiều nhất. Ở conf thấp (0.001), NMS-free lợi hơn vì:\n- Không phải lọc qua nhiều box trùng lặp\n- Cảnh đông: nhiều người → nhiều duplicate → NMS tốn thời gian\n- CPU/NPU: NMS không được tối ưu hardware như convolution",
+    "Q3": "(a) Người có score thấp hơn sẽ bị loại → đếm thiếu. Tăng ngưỡng giảm loại nhầm nhưng tăng duplicate.\n\n(b) Head one-to-many cho tín hiệu học dày hơn trong training (nhiều positive anchors), \n    dù inference dùng head one-to-one để không cần NMS.",
+    "Q4": "(a) Đếm THỪA: hai người đứng sát nhau → cùng class → thành 1 vùng liên thông.\n    Đếm THIẾU: một người bị vật che (ví dụ cột cửa) → tách thành 2 vùng riêng.\n\n(b) Xe buýt có thể bị gán vào class khác (car, truck) vì model semantic \n    được train trên dataset khác (Cityscapes), không phải COCO.",
+    "Q5": "(a) YOLO26-seg dùng prototype + coefficients → mask mịn hơn với object lớn nhưng \n    thô với object nhỏ (chỉ có 32 prototype). Mask R-CNN dự đoán mask 28×28 riêng \n    cho mỗi RoI → chất lượng đồng đều hơn.\n\n(b) \"Mỗi mask YOLO lấy mask MR-CNN có IoU cao nhất\" có thể sai khi: \n    - YOLO thấy 5 mask, MR-CNN thấy 3 mask → mask 4 và 5 không được ghép\n    - Hai mask YOLO cùng ghép vào một mask MR-CNN (nếu không sort hay loại trùng)",
+    "Q6": "(a) Điểm A (tâm) → mask toàn thân người. Điểm B (80% cao) → có thể ra mask \n    một phần hoặc nhầm sang vật khác. Prompt box an toàn hơn vì giới hạn \n    không gian tìm kiếm.\n\n(b) Dùng SAM trực tiếp khi cần mask real-time, cần nhiều object classes, \n    hoặc prototype nhanh. Dùng SAM để tạo nhãn khi train model nhỏ gọn \n    hơn cho deployment.",
+    "Q7": "Keypoint R-CNN vẽ keypoint ngoài khung hình tại vị trí argmax của heatmap \ntrong vùng feature map tương ứng (thường ở mép feature map = mép box).\n\nĐiều này cho thấy argmax không kiểm tra keypoint có thực sự nằm trong box \nhay không. Visibility score cần thiết để đánh dấu keypoint không đáng tin.",
+    "Q8": "Người 40×80: OKS < 0.5 ở khoảng 8-10 pixel. Người 250×500: cần > 20 pixel.\n\nσ mắt nhỏ vì góc nhìn camera ổn định, mắt ít bị biến dạng theo pose.\nHông biến dạng nhiều theo pose nên annotator đánh dấy khác nhau hơn.\n\nCamera cổng gắn cao: người nhỏ (80px) → σ hiệu dụng lớn → OKS khó đạt 0.5.",
+    "Q9": "(a) BÁO NHẦM: người cúi người gần camera (> 60°) dù đang làm việc.\n    BỎ SÓT: người ngã ngang nhưng camera nhìn từ trên xuống (torso vẫn thẳng đứng).\n\n(b) Ảnh xoay → pose estimation kém vì model train trên ảnh upright.\n\n(c) Cần thêm: temporal smoothing (so sánh nhiều frame), velocity của keypoint,\n    context scene (có ghế hay không), fall detection model chuyên dụng.",
+    "Q10": "Validation mAP không giảm vì tất cả hổ đều quay phải.\n\nBug khi triển khai: camera nhìn thấy hổ quay trái (hoặc lật ngang ảnh train).\nLúc đó model nhầm left_* ↔ right_* vì không học được hoán đổi.",
+    "Q11": "Hai kiểu lỗi thường gặp:\n\n1. Đảo chân trái/phải: paw/hock bị nhầm vị trí. Khắc phục: flip_idx đúng\n   (đã làm), thêm data augmentation với horizontal flip.\n\n2. Chân sau bị che: nhiều hổ nằm/ngồi → chân sau không nhìn thấy. \n   Khắc phục: thêm ảnh hổ ở nhiều pose khác nhau, keypoint visibility weighting.\n\n3. Hổ bị cắt ở mép: keypoint gần mép ảnh bị ước lượng kém.\n   Khắc phục: crop augmentation nhẹ, keypoint outside handling.",
+    "Q12": "Không hợp lý. Mũi hổ (nose) dễ đánh dấu chính xác hơn chân (paw) vì:\n- Mũi nằm ở vị trí cố định trên đầu\n- Chân có thể gập, xoay, che lẫn nhau\n\nCách ước lượng σ cho dataset custom:\n1. Cho 2-3 annotator đánh dấu cùng 50-100 ảnh\n2. Tính std của mỗi keypoint: σ_i = std(distance_i) / scale\n3. Hoặc dùng heuristic: keypoint càng nhiều occlusion → σ càng lớn"
+  },
+  "env": {
+    "device": "cuda",
+    "torch": "2.11.0+cu130",
+    "ultralytics": "8.4.171"
+  }
+}
